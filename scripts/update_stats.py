@@ -1,4 +1,4 @@
-"""Refresh the profile README: stats table plus two self-rendered SVG cards.
+"""Refresh the bilingual profile README (EN + DE): stats tables plus self-rendered SVG cards.
 
 Counts release asset downloads (installers vs. update checks), pull requests,
 stars, commits and code languages across all public, non-fork repositories.
@@ -17,7 +17,6 @@ from xml.sax.saxutils import escape
 USER = os.environ.get("GH_USER", "normannormalmann")
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-README = ROOT / "README.md"
 CARDS = ROOT / "cards"
 MARKER = re.compile(r"(<!-- STATS:START -->)(.*?)(<!-- STATS:END -->)", re.S)
 TOP_LANGS = 6
@@ -28,6 +27,24 @@ LANG_COLORS = {
     "Dockerfile": "#384d54", "Go": "#00ADD8", "Rust": "#dea584",
 }
 FALLBACK_COLOR = "#8b949e"
+TEXT = {
+    "en": {
+        "readme": "README.md", "thousands": ",", "date": "%Y-%m-%d",
+        "header": "| 📦 Installer downloads | 🔄 Update checks | 🔀 Pull requests | ⭐ Stars |",
+        "note": "Downloads and update checks count release assets across all repos. "
+                "As of {date}, refreshed automatically every week.",
+        "stats_title": "GitHub stats · {repos} own repos", "langs_title": "Most used languages",
+        "labels": ["Commits (public)", "Pull requests", "Stars", "Installer downloads", "Update checks", "Followers"],
+    },
+    "de": {
+        "readme": "README.de.md", "thousands": ".", "date": "%d.%m.%Y",
+        "header": "| 📦 Installer-Downloads | 🔄 Update-Anfragen | 🔀 Pull Requests | ⭐ Sterne |",
+        "note": "Downloads und Update-Anfragen zählen die Release-Assets aller Repos. "
+                "Stand: {date}, wird wöchentlich automatisch aktualisiert.",
+        "stats_title": "GitHub-Statistik · {repos} eigene Repos", "langs_title": "Meistgenutzte Sprachen",
+        "labels": ["Commits (öffentlich)", "Pull Requests", "Sterne", "Installer-Downloads", "Update-Anfragen", "Follower"],
+    },
+}
 CARD_STYLE = """<style>
 .bg{fill:#ffffff;stroke:#d0d7de}.t{font:600 15px 'Segoe UI',Ubuntu,sans-serif;fill:#8957e5}
 .l{font:400 12px 'Segoe UI',Ubuntu,sans-serif;fill:#57606a}.v{font:600 18px 'Segoe UI',Ubuntu,sans-serif;fill:#1f2328}
@@ -73,19 +90,16 @@ def collect():
     return totals, langs
 
 
-def de(n):
-    return f"{n:,}".replace(",", ".")
+def fmt(n, lang):
+    return f"{n:,}".replace(",", TEXT[lang]["thousands"])
 
 
-def render_table(t):
-    today = datetime.date.today().strftime("%d.%m.%Y")
-    return (
-        "\n| 📦 Installer-Downloads | 🔄 Update-Anfragen | 🔀 Pull Requests | ⭐ Sterne |\n"
-        "|:---:|:---:|:---:|:---:|\n"
-        f"| **{de(t['installs'])}** | **{de(t['updates'])}** | **{de(t['prs'])}** | **{de(t['stars'])}** |\n\n"
-        "<sub>Downloads und Update-Anfragen zählen die Release-Assets aller Repos. "
-        f"Stand: {today}, wird wöchentlich automatisch aktualisiert.</sub>\n"
-    )
+def render_table(t, lang):
+    tx = TEXT[lang]
+    today = datetime.date.today().strftime(tx["date"])
+    values = " | ".join(f"**{fmt(t[k], lang)}**" for k in ("installs", "updates", "prs", "stars"))
+    return (f"\n{tx['header']}\n|:---:|:---:|:---:|:---:|\n| {values} |\n\n"
+            f"<sub>{tx['note'].format(date=today)}</sub>\n")
 
 
 def svg(title, body, label):
@@ -97,46 +111,54 @@ def svg(title, body, label):
     )
 
 
-def stats_card(t):
-    items = [("Commits (öffentlich)", t["commits"]), ("Pull Requests", t["prs"]),
-             ("Sterne", t["stars"]), ("Installer-Downloads", t["installs"]),
-             ("Update-Anfragen", t["updates"]), ("Follower", t["followers"])]
+def stats_card(t, lang):
+    keys = ["commits", "prs", "stars", "installs", "updates", "followers"]
+    items = list(zip(TEXT[lang]["labels"], (t[k] for k in keys)))
     cells = []
     for i, (label, value) in enumerate(items):
         x, y = 22 + (i % 3) * 132, 78 + (i // 3) * 62
-        cells.append(f'<text class="v" x="{x}" y="{y}">{de(value)}</text>'
+        cells.append(f'<text class="v" x="{x}" y="{y}">{fmt(value, lang)}</text>'
                      f'<text class="l" x="{x}" y="{y + 18}">{escape(label)}</text>')
     label = ", ".join(f"{lbl}: {v}" for lbl, v in items)
-    return svg(f"GitHub-Statistik · {t['repos']} eigene Repos", "".join(cells), label)
+    return svg(TEXT[lang]["stats_title"].format(repos=t["repos"]), "".join(cells), label)
 
 
-def languages_card(langs):
+def languages_card(langs, lang):
     total = sum(langs.values()) or 1
     top = sorted(langs.items(), key=lambda kv: -kv[1])[:TOP_LANGS]
     bar_w, x, parts = CARD_W - 44, 22.0, []
-    for lang, size in top:
+    for name, size in top:
         w = bar_w * size / total
         parts.append(f'<rect x="{x:.1f}" y="52" width="{max(w, 1):.1f}" height="10" '
-                     f'fill="{LANG_COLORS.get(lang, FALLBACK_COLOR)}"/>')
+                     f'fill="{LANG_COLORS.get(name, FALLBACK_COLOR)}"/>')
         x += w
-    for i, (lang, size) in enumerate(top):
+    for i, (name, size) in enumerate(top):
         lx, ly = 22 + (i % 2) * 196, 92 + (i // 2) * 28
-        parts.append(f'<circle cx="{lx + 5}" cy="{ly - 4}" r="5" fill="{LANG_COLORS.get(lang, FALLBACK_COLOR)}"/>'
-                     f'<text class="l" x="{lx + 16}" y="{ly}">{escape(lang)} '
-                     f'{size / total * 100:.1f} %</text>')
-    label = ", ".join(f"{lang} {size / total * 100:.1f} %" for lang, size in top)
-    return svg("Meistgenutzte Sprachen", "".join(parts), label)
+        parts.append(f'<circle cx="{lx + 5}" cy="{ly - 4}" r="5" fill="{LANG_COLORS.get(name, FALLBACK_COLOR)}"/>'
+                     f'<text class="l" x="{lx + 16}" y="{ly}">{escape(name)} '
+                     f'{pct(size / total, lang)}</text>')
+    label = ", ".join(f"{name} {pct(size / total, lang)}" for name, size in top)
+    return svg(TEXT[lang]["langs_title"], "".join(parts), label)
+
+
+def pct(share, lang):
+    text = f"{share * 100:.1f}"
+    return f"{text.replace('.', ',')} %" if lang == "de" else f"{text}%"
 
 
 def main():
-    text = README.read_text(encoding="utf-8")
-    if not MARKER.search(text):
-        sys.exit("STATS markers not found in README.md")
+    readmes = {lang: ROOT / tx["readme"] for lang, tx in TEXT.items()}
+    for lang, path in readmes.items():
+        if not MARKER.search(path.read_text(encoding="utf-8")):
+            sys.exit(f"STATS markers not found in {path.name}")
     totals, langs = collect()
     CARDS.mkdir(exist_ok=True)
-    (CARDS / "stats.svg").write_text(stats_card(totals), encoding="utf-8")
-    (CARDS / "languages.svg").write_text(languages_card(langs), encoding="utf-8")
-    README.write_text(MARKER.sub(lambda m: m.group(1) + render_table(totals) + m.group(3), text), encoding="utf-8")
+    for lang, path in readmes.items():
+        (CARDS / f"stats-{lang}.svg").write_text(stats_card(totals, lang), encoding="utf-8")
+        (CARDS / f"languages-{lang}.svg").write_text(languages_card(langs, lang), encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
+        path.write_text(MARKER.sub(lambda m: m.group(1) + render_table(totals, lang) + m.group(3), text),
+                        encoding="utf-8")
 
 
 if __name__ == "__main__":
