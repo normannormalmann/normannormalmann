@@ -18,7 +18,7 @@ Ich sitze in Dresden und baue Software, die Arbeit abnimmt: Desktop-Apps, KI-Wor
 <!-- STATS:START -->
 | 📦 Installer-Downloads | 🔄 Update-Anfragen | 🔀 Pull Requests | ⭐ Sterne |
 |:---:|:---:|:---:|:---:|
-| **119** | **122** | **47** | **7** |
+| **119** | **122** | **48** | **7** |
 
 <sub>Downloads und Update-Anfragen zählen die Release-Assets aller Repos. Stand: 24.11.2026, wird wöchentlich automatisch aktualisiert.</sub>
 <!-- STATS:END -->
