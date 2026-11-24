@@ -90,8 +90,8 @@ Ein eigenes Studio für KI-erstellte Motion-Design-Videos, eingerichtet mit eine
 
 <div align="center">
 
-<img height="165" src="https://github-readme-stats.vercel.app/api?username=normannormalmann&show_icons=true&include_all_commits=true&count_private=true&hide_border=true&bg_color=00000000&title_color=8957e5&icon_color=1f6feb&text_color=7d8590" alt="GitHub Stats">
-<img height="165" src="https://github-readme-stats.vercel.app/api/top-langs/?username=normannormalmann&layout=compact&hide_border=true&bg_color=00000000&title_color=8957e5&text_color=7d8590&langs_count=8" alt="Top Languages">
+<img width="49%" src="cards/stats.svg" alt="GitHub-Statistik: Commits, Pull Requests, Sterne, Downloads, Update-Anfragen und Follower">
+<img width="49%" src="cards/languages.svg" alt="Meistgenutzte Programmiersprachen">
 
 <img src="https://github-readme-activity-graph.vercel.app/graph?username=normannormalmann&bg_color=00000000&color=7d8590&line=8957e5&point=1f6feb&area=true&area_color=8957e5&hide_border=true" alt="Activity Graph" width="100%">
 
